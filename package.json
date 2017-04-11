@@ -1,0 +1,21 @@
+{
+  "name": "multihack-wire",
+  "version": "1.1.0",
+  "description": "Multihack's binary wire protocol.",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "standard --fix src/** && tape test/*.js",
+    "build": "browserify src/index.js -s MultihackWire -o dist/multihack-wire.js"
+  },
+  "author": "Thomas Mullen",
+  "license": "MIT",
+  "devDependencies": {
+    "standard": "^8.6.0",
+    "tape": "^4.6.3"
+  },
+  "dependencies": {
+    "inherits": "^2.0.3",
+    "readable-stream": "^2.2.9",
+    "safe-buffer": "^5.0.1"
+  }
+}
