@@ -3,7 +3,7 @@
 ![Travis CI](https://travis-ci.org/RationalCoding/multihack-wire.svg?branch=master)
 [![Standard - JavaScript Style Guide](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com/)
 
-JS implementation of Multihack's streaming wire protocol.
+Multihack's streaming wire protocol.
 
 Designed for sending many large files in random chunk sizes, but also lots of tiny edits.
 
