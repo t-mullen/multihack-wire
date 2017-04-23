@@ -1,6 +1,6 @@
 // The streaming binary wire protocol for Multihack
-// Why? Because JSON/msgpack/schemapack/protobuf/anything weren't fast enough with chunking
-// for large and/or rapid sequential file transfer over ws/webrtc
+// Why? Because JSON/msgpack/schemapack/protobuf/anything weren't fast enough with chunking.
+// For large and/or rapid sequential file transfer over ws/webrtc
 
 var Duplex = require('readable-stream').Duplex
 var Buffer = require('safe-buffer').Buffer
