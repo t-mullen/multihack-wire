@@ -9,10 +9,7 @@ var inherits = require('inherits')
 inherits(Wire, Duplex)
 
 var MESSAGE_PROTOCOL = Buffer.from('\u0013MultiHack protocol')
-var MESSAGE_REQUEST_PROJECT = 0
-var MESSAGE_PROVIDE_FILE = 1
-var MESSAGE_DELETE_FILE = 2
-var MESSAGE_CHANGE_FILE = 3
+var MESSAGE_YJS = 0
 
 function Wire (opts) {
   if (!(this instanceof Wire)) return new Wire(opts)
@@ -53,72 +50,24 @@ Wire.prototype.destroy = function () {
   this._parse = null
 }
 
-/*
-<MESSAGE_PROVIDE_FILE>
-<filepath length><filepath><file length><file content>
-*/
-Wire.prototype.provideFile = function (filePath, content) {
-  var i = 0
-  var size = content.length
-  var buf = Buffer.alloc(8 + 32 + filePath.length + 32 + size)
-
-  buf.writeInt8(MESSAGE_PROVIDE_FILE)
-
-  buf.writeInt32LE(filePath.length, i += 8)
-  buf.write(filePath, i += 32)
-
-  buf.writeInt32LE(size, i += filePath.length)
-  buf.write(content, i += 32)
-
-  this._push(buf)
-}
 
 /*
-<MESSAGE_DELETE_FILE>
-<filepath length><filepath>
+<MESSAGE_YJS>
+<message length><message>
 */
-Wire.prototype.deleteFile = function (filePath) {
+Wire.prototype.yjs = function (message) {
   var i = 0
-  var buf = Buffer.alloc(8 + 32 + filePath.length)
+  var payload = JSON.stringify(message)
+  var buf = Buffer.alloc(8 + 32 + payload.length)
 
-  buf.writeInt8(MESSAGE_DELETE_FILE)
+  buf.writeInt8(MESSAGE_YJS)
 
-  buf.writeInt32LE(filePath.length, i += 8)
-  buf.write(filePath, i += 32)
-
-  this._push(buf)
-}
-
-/*
-<MESSAGE_CHANGE_FILE>
-<filepath length><filepath><payload length><json payload>
-*/
-Wire.prototype.changeFile = function (filePath, change) {
-  var i = 0
-  var payload = JSON.stringify(change)
-  var size = payload.length
-  var buf = Buffer.alloc(8 + 32 + filePath.length + 32 + size)
-
-  buf.writeInt8(MESSAGE_CHANGE_FILE)
-
-  buf.writeInt32LE(filePath.length, i += 8)
-  buf.write(filePath, i += 32)
-
-  buf.writeInt32LE(size, i += filePath.length)
+  buf.writeInt32LE(payload.length, i += 8)
   buf.write(payload, i += 32)
 
   this._push(buf)
 }
 
-/*
-<MESSAGE_REQUEST_PROJECT>
-*/
-Wire.prototype.requestProject = function (filePath, change) {
-  var buf = Buffer.alloc(8)
-  buf.writeInt8(MESSAGE_REQUEST_PROJECT)
-  this._push(buf)
-  // no body
-}
 
 Wire.prototype._push = function (chunk) {
   if (this._finished) return
@@ -169,97 +118,31 @@ Wire.prototype._parseProtocol = function (chunk) {
 // parse a message header
 Wire.prototype._parseMessage = function (chunk) {
   switch (chunk[0]) {
-    case MESSAGE_CHANGE_FILE:
-      this._parse = this._parseChangeFile
+    case MESSAGE_YJS:
+      this._parse = this._parseYjs
       this._parseSize = 32
-      break
-    case MESSAGE_DELETE_FILE:
-      this._parse = this._parseDeleteFile
-      this._parseSize = 32
-      break
-    case MESSAGE_PROVIDE_FILE:
-      this._parse = this._parseProvideFile
-      this._parseSize = 32
-      break
-    case MESSAGE_REQUEST_PROJECT:
-      this.emit('requestProject') // nothing to parse
-      this._nextMessage()
       break
   }
 }
 
 /*
-<MESSAGE_CHANGE_FILE>
-<filepath length><filepath><payload length><json payload>
+<MESSAGE_YJS>
+<message length><message>
 */
-Wire.prototype._parseChangeFile = function (chunk) {
+Wire.prototype._parseYjs = function (chunk) {
   switch (this._parseState) {
-    case 0: // filepath length
+    case 0: // message length
       this._parseSize = chunk.readInt32LE(0)
       this._parseState = 1
       break
-    case 1: // filepath
-      this._parseObj.filePath = chunk.toString()
-      this._parseSize = 32
-      this._parseState = 2
-      break
-    case 2: // payload length
-      this._parseSize = chunk.readInt32LE(0)
-      this._parseState = 3
-      break
-    case 3: // payload
+    case 1: // message
       // HACK: Why is chunk.toString().length < chunk.length???
       try {
-        this._parseObj.change = JSON.parse(chunk.toString())
+        this._parseObj = JSON.parse(chunk.toString())
       } catch (err) {
-        this._parseObj.change = JSON.parse(chunk.toString()+'"}')
+        this._parseObj = JSON.parse(chunk.toString()+'"}')
       }
-      this.emit('changeFile', this._parseObj)
-      this._nextMessage()
-      break
-  }
-}
-
-/*
-<MESSAGE_DELETE_FILE>
-<filepath length><filepath>
-*/
-Wire.prototype._parseDeleteFile = function (chunk) {
-  switch (this._parseState) {
-    case 0: // filepath length
-      this._parseSize = chunk.readInt32LE(0)
-      this._parseState = 1
-      break
-    case 1: // filepath
-      this._parseObj.filePath = chunk.toString()
-      this.emit('deleteFile', this._parseObj)
-      this._nextMessage()
-      break
-  }
-}
-
-/*
-<MESSAGE_PROVIDE_FILE>
-<filepath length><filepath><file length><file content>
-*/
-Wire.prototype._parseProvideFile = function (chunk) {
-  switch (this._parseState) {
-    case 0: // filepath length
-      this._parseSize = chunk.readInt32LE(0)
-      this._parseState = 1
-      break
-    case 1: // filepath
-      this._parseObj.filePath = chunk.toString()
-      this._parseSize = 32
-      this._parseState = 2
-      break
-    case 2: // payload length
-      this._parseSize = chunk.readInt32LE(0)
-      this._parseState = 3
-      break
-    case 3: // payload
-      this._parseObj.content = chunk.toString()
-      this.emit('provideFile', this._parseObj)
+      this.emit('yjs', this._parseObj)
       this._nextMessage()
       break
   }
