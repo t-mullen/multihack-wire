@@ -1,6 +1,6 @@
 {
   "name": "multihack-wire",
-  "version": "1.1.1",
+  "version": "2.0.0",
   "description": "Multihack's binary wire protocol.",
   "main": "src/index.js",
   "scripts": {
