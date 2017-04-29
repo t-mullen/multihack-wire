@@ -50,24 +50,19 @@ Wire.prototype.destroy = function () {
   this._parse = null
 }
 
-
 /*
 <MESSAGE_YJS>
 <message length><message>
 */
 Wire.prototype.yjs = function (message) {
-  var i = 0
-  var payload = JSON.stringify(message)
-  var buf = Buffer.alloc(8 + 32 + payload.length)
+  var payload = Buffer.from(JSON.stringify(message))
+  var buf = Buffer.alloc(8 + 32)
 
   buf.writeInt8(MESSAGE_YJS)
+  buf.writeInt32LE(payload.length, 8)
 
-  buf.writeInt32LE(payload.length, i += 8)
-  buf.write(payload, i += 32)
-
-  this._push(buf)
+  this._push(Buffer.concat([buf, payload]))
 }
-
 
 Wire.prototype._push = function (chunk) {
   if (this._finished) return
@@ -136,13 +131,12 @@ Wire.prototype._parseYjs = function (chunk) {
       this._parseState = 1
       break
     case 1: // message
-      // HACK: Why is chunk.toString().length < chunk.length???
       try {
         this._parseObj = JSON.parse(chunk.toString())
-      } catch (err) {
-        this._parseObj = JSON.parse(chunk.toString()+'"}')
+        this.emit('yjs', this._parseObj)
+      } catch (e) {
+        console.error('Could not parse object.')
       }
-      this.emit('yjs', this._parseObj)
       this._nextMessage()
       break
   }

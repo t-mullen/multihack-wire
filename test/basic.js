@@ -2,73 +2,37 @@ var test = require('tape')
 var Wire = require('./../src/index')
 
 test('test send/receive', function (t) {
-  t.plan(12)
-  
+  t.plan(2)
+
   var w1 = new Wire()
   var w2 = new Wire()
-  
+
+
   w2.pipe(w1).pipe(w2)
-  
-  w1.on('requestProject', function () {
-    t.pass('got request project')
-    w1.provideFile('test/test.js', 'content')
+
+  w1.on('yjs', function () {
+    t.pass('got w1 message')
+    w1.yjs('content')
   })
-  w2.on('requestProject', function () {
-    t.pass('got request project')
-    w2.provideFile('a/test.js', 'hello')
+  w2.on('yjs', function () {
+    t.pass('got w2 message')
   })
-  
-  w1.on('provideFile', function (data) {
-    t.equal(data.filePath, 'a/test.js')
-    t.equal(data.content, 'hello')
-    w1.deleteFile('test/test.js')
-  })
-  w2.on('provideFile', function (data) {
-    t.equal(data.filePath, 'test/test.js')
-    t.equal(data.content, 'content')
-    w2.deleteFile('b/test.js') 
-  })
-  
-  w1.on('deleteFile', function (data) {
-    t.equal(data.filePath, 'b/test.js')
-    w1.changeFile('test/test.js', {
-      x: {
-        z: 'wow'
-      }
-    })
-  })
-  w2.on('deleteFile', function (data) {
-    t.equal(data.filePath, 'test/test.js')
-    w2.changeFile('c/test.js', {
-      y:1
-    })
-  })
-  
-  w1.on('changeFile', function (data) {
-    t.equal(data.filePath, 'c/test.js')
-    t.equal(data.change.y, 1)
-  })
-  w2.on('changeFile', function (data) {
-    t.equal(data.filePath, 'test/test.js')
-    t.equal(data.change.x.z, 'wow')
-  })
-  
-  w1.requestProject()
-  w2.requestProject()
+
+  w2.yjs({})
 })
 
-test('rapid changes', { timeout: 6000 }, function (t){  
+test('rapid changes', { timeout: 6000 }, function (t) {
   var w1 = new Wire()
   var w2 = new Wire()
-  
+
   w2.pipe(w1).pipe(w2)
-  
-  w1.on('changeFile', function (data) {
-    t.equal(data.change.b, 'hello world')
+
+  w1.on('yjs', function (data) {
+    t.equal(data, 'hello world')
   })
-  w2.on('changeFile', function (data) {
-    t.equal(data.change.x.y, 1)
-    
+  w2.on('yjs', function (data) {
+    t.equal(data.x.y, 1)
+
     count++
     if (count >= 100) {
       clearTimeout(loop)
@@ -77,37 +41,35 @@ test('rapid changes', { timeout: 6000 }, function (t){
       t.end()
     }
   })
-  
+
   var count = 0
   function loop () {
-    w1.changeFile('test/test.js', {
+    w1.yjs({
       x: {
         y: 1
       }
     })
-    w2.changeFile('test/test.js', {
-      b: 'hello world'
-    })
+    w2.yjs('hello world')
   }
-  
+
   setInterval(loop, 1)
 })
 
 test('large data', function (t) {
   t.plan(1)
-  
+
   var w1 = new Wire()
   var w2 = new Wire()
-  
+
   w2.pipe(w1).pipe(w2)
-  
+
   var payload = (new Array(100000)).join('wow')
-  
-  w2.on('provideFile', function (data) {
-    t.equal(data.content, payload)
+
+  w2.on('yjs', function (data) {
+    t.equal(data, payload)
   })
-  
-  w1.provideFile('path', payload)
+
+  w1.yjs(payload)
 })
 
 test('SUMMARY', function (t) {
